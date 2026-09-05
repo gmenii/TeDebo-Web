@@ -36,21 +36,54 @@ function LandingPage() {
           src="/assets/logo_tedebo.png"
           alt="Te Debo"
         />
-        <span>Dividí la cuenta sin hacer cuentas.</span>
       </nav>
       <section className="landing-hero">
         <div className="landing-copy">
-          <div className="eyebrow">La forma simple de dividir un ticket</div>
-          <h1>Dividí la cuenta sin hacer cuentas.</h1>
+          <div className="eyebrow">Dividí la cuenta, sin hacer cuentas.</div>
+          <h1>
+            La forma más simple de dividir cuentas
+            <span> con amigos.</span>
+          </h1>
           <p>
-            Escaneá tu ticket, elegí cómo dividirlo y compartí un link. Tus
-            amigos seleccionan lo que consumieron y todos saben cuánto deben.
+            En bares, restaurantes o donde sea. Sacale una foto al ticket, elegí
+            cómo dividirlo y compartí un link.
           </p>
-          <button className="store-button" disabled>
-            Descargar en Google Play <span>Próximamente</span>
+          <button
+            className="store-button"
+            disabled
+            aria-label="Descargar en Google Play próximamente"
+          >
+            <span className="store-copy">
+              <small>Descargar en</small>
+              Google Play
+            </span>
           </button>
+          <div className="feature-row" id="beneficios">
+            <div className="feature-item">
+              <span className="feature-icon">▤</span>
+              <div>
+                <strong>Rápido</strong>
+                <span>Subí la foto del ticket y listo.</span>
+              </div>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">↗</span>
+              <div>
+                <strong>Compartí</strong>
+                <span>Enviá el link a tus amigos.</span>
+              </div>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">♧</span>
+              <div>
+                <strong>Dividí</strong>
+                <span>Cada uno paga lo suyo.</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="landing-art">
+          <div className="art-glow" />
           <img
             className="landing-wallet"
             src="/assets/wallet.png"
@@ -58,21 +91,56 @@ function LandingPage() {
           />
         </div>
       </section>
-      <section className="how-section">
-        <div>
-          <span className="step-number">01</span>
-          <h2>Escaneá</h2>
-          <p>La app reconoce los productos de tu ticket.</p>
+      <section className="how-section" id="como-funciona">
+        <div className="how-heading">
+          <span className="section-line" />
+          <h2>Así de fácil</h2>
+          <span className="section-line" />
         </div>
-        <div>
-          <span className="step-number">02</span>
-          <h2>Dividí</h2>
-          <p>Elegí por productos, partes iguales o montos personalizados.</p>
-        </div>
-        <div>
-          <span className="step-number">03</span>
-          <h2>Compartí</h2>
-          <p>Mandá un único link y mirá el progreso en tiempo real.</p>
+        <div className="steps-row">
+          <div className="step-item">
+            <span className="step-number">1</span>
+            <div>
+              <h3>
+                Sacá una foto
+                <br />
+                del ticket
+              </h3>
+              <p>Te Debo detecta los productos automáticamente.</p>
+            </div>
+          </div>
+          <div className="step-item">
+            <span className="step-number">2</span>
+            <div>
+              <h3>
+                Revisá los
+                <br />
+                productos
+              </h3>
+              <p>Podés editar cantidades o agregar lo que falte.</p>
+            </div>
+          </div>
+          <div className="step-item">
+            <span className="step-number">3</span>
+            <div>
+              <h3>
+                Decidí quién
+                <br />
+                pagó
+              </h3>
+              <p>Indicá quién abonó la cuenta completa.</p>
+            </div>
+          </div>
+          <div className="step-item">
+            <span className="step-number">4</span>
+            <div>
+              <h3>
+                Compartí el link
+                <br />y cada uno elige
+              </h3>
+              <p>Tus amigos eligen lo que consumieron y pagan su parte.</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
