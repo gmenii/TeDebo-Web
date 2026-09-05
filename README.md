@@ -1,4 +1,24 @@
-# React + Vite
+# TeDebo Web
+
+La web lee las cuentas publicadas por la app desde `shared_accounts/{codigo}`
+en Firestore. El link que genera Flutter usa el formato `/c/{codigo}`.
+La URL pública configurada por defecto es `https://te-debo-web.vercel.app`.
+
+## Configuración Firebase
+
+Los valores públicos del proyecto `tedeboapp` están incluidos como fallback en
+`src/firebase.js`. Para usar otra app web, crear un archivo `.env.local` con:
+
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+```
+
+Publicar `firestore.rules` en el proyecto Firebase antes de probar la web.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

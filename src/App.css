@@ -8,6 +8,70 @@
   margin: 0 auto;
 }
 
+.name-page {
+  padding-top: 48px;
+}
+
+.name-page .logo {
+  text-align: center;
+}
+
+.name-card {
+  background: #121124;
+  border: 1px solid #29233D;
+  border-radius: 24px;
+  padding: 32px 28px;
+  margin-top: 32px;
+}
+
+.eyebrow {
+  color: #C7B8FF;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.name-card h1 {
+  margin: 10px 0 8px;
+  font-size: 30px;
+}
+
+.name-card p {
+  color: #AAA5B5;
+  margin: 0 0 24px;
+}
+
+.name-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.name-card label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.name-card input {
+  width: 100%;
+  border: 1px solid #29233D;
+  border-radius: 12px;
+  background: #020312;
+  color: #F6F6F7;
+  padding: 14px 16px;
+  font: inherit;
+  outline: none;
+}
+
+.name-card input:focus {
+  border-color: #9B4DFF;
+}
+
+.name-card .confirm-button {
+  margin-top: 10px;
+}
+
 /* HEADER */
 
 .header {
@@ -137,6 +201,23 @@
   font-weight: 600;
 }
 
+.assigned-part {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 0;
+  border-top: 1px solid #29233D;
+}
+
+.assigned-part span {
+  color: #AAA5B5;
+}
+
+.assigned-part strong {
+  font-size: 22px;
+}
+
 /* COUNTER */
 
 .counter {
@@ -159,6 +240,11 @@
 
 .counter button:hover {
   border-color: #9B4DFF;
+}
+
+.counter button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .counter span {
@@ -316,6 +402,13 @@
 
 .thanks-card span {
   color: #AAA5B5;
+  font-size: 14px;
+}
+
+.thanks-card .alias {
+  display: block;
+  margin-top: 14px;
+  color: #C7B8FF;
   font-size: 14px;
 }
 

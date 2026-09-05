@@ -1,475 +1,130 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Routes, Route, useParams } from "react-router-dom"
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore"
+import { db } from "./firebase"
 import "./App.css"
 
-const accounts = {
-  "cena-viernes": {
-    title: "Cena viernes",
-    createdBy: "Juan",
-    total: 75350,
+const money = (cents) => `$${Math.round(cents / 100).toLocaleString("es-AR")}`
+const newId = () => typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-    products: [
-      {
-        id: 1,
-        name: "Pizza muzzarella",
-        quantity: 1,
-        price: 12500,
-        selected: 1,
-        shared: false,
-  
-      },
-      {
-        id: 2,
-        name: "Papas fritas",
-        quantity: 1,
-        price: 8500,
-        selected: 2,
-        shared: true,
-      },
-      {
-        id: 3,
-        name: "Hamburguesa completa",
-        quantity: 1,
-        price: 15000,
-        selected: 1,
-        shared: false,
-      },
-      {
-        id: 4,
-        name: "Gaseosa",
-        quantity: 2,
-        price: 5000,
-        selected: 2,
-        shared: true,
-      },
-    ],
-  },
+const participantAmount = (account, participant) => (account.items || []).reduce((total, item) => {
+  const quantity = Number(participant.selections?.[item.id] || 0)
+  if (!quantity) return total
+  const units = Math.max(1, item.quantity)
+  const unit = Math.floor(item.totalCents / units)
+  return total + quantity * unit + Math.min(quantity, item.totalCents % units)
+}, 0)
 
-  "asado-sabado": {
-    title: "Asado del sábado",
-    createdBy: "Nico",
-    total: 62000,
-
-    products: [
-      {
-        id: 1,
-        name: "Carne",
-        quantity: 1,
-        price: 28000,
-        selected: 1,
-        shared: false,
-      },
-      {
-        id: 2,
-        name: "Papas",
-        quantity: 1,
-        price: 9000,
-        selected: 2,
-        shared: true,
-      },
-      {
-        id: 3,
-        name: "Gaseosa",
-        quantity: 2,
-        price: 6000,
-        selected: 2,
-        shared: true,
-      },
-    ],
-  },
+function NameStep({ onSubmit, loading }) {
+  const [name, setName] = useState("")
+  return <main className="page"><section className="container name-page">
+    <div className="logo">Te <span>Debo</span></div>
+    <div className="name-card"><div className="eyebrow">Una cuenta compartida</div><h1>¿Cómo te llamás?</h1><p>Así todos pueden reconocer qué parte elegiste.</p>
+      <form onSubmit={(event) => { event.preventDefault(); onSubmit(name.trim()) }}><label htmlFor="guest-name">Tu nombre</label><input id="guest-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Nico" autoFocus maxLength={60} /><button className="confirm-button" disabled={!name.trim() || loading}>{loading ? "CARGANDO..." : "CONTINUAR"}</button></form>
+    </div>
+  </section></main>
 }
 
 function AccountPage() {
   const { slug } = useParams()
-
-  const account = accounts[slug] || accounts["cena-viernes"]
-
-  const [products, setProducts] = useState(
-    account.products.map((product) => ({
-      ...product,
-      selected: 0,
-    }))
-  )
-
+  const [account, setAccount] = useState(null)
+  const [error, setError] = useState("")
+  const [guestName, setGuestName] = useState(() => localStorage.getItem(`tedebo-name-${slug}`) || "")
+  const [participantId, setParticipantId] = useState(() => localStorage.getItem(`tedebo-participant-${slug}`) || "")
+  const [joining, setJoining] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
   const [paid, setPaid] = useState(false)
-  const [closed, setClosed] = useState(false)
 
-  const changeSelection = (id, amount) => {
-    setProducts((currentProducts) =>
-      currentProducts.map((product) => {
-        if (product.id !== id) {
-          return product
-        }
+  useEffect(() => {
+    if (!slug) return undefined
+    return onSnapshot(doc(db, "shared_accounts", slug), (snapshot) => {
+      if (!snapshot.exists()) { setError("No encontramos una cuenta con ese código."); return }
+      setAccount({ id: snapshot.id, ...snapshot.data() })
+      setError("")
+    }, () => setError("No pudimos cargar la cuenta. Revisá la conexión e intentá de nuevo."))
+  }, [slug])
 
-        const newSelection = Math.max(
-          0,
-          Math.min(
-            product.quantity,
-            product.selected + amount
-          )
-        )
-
-        return {
-          ...product,
-          selected: newSelection,
-        }
+  const joinAccount = async (name) => {
+    if (!name || !account) return
+    setJoining(true)
+    const requestedId = participantId || newId()
+    let selectedId = requestedId
+    try {
+      await runTransaction(db, async (transaction) => {
+        const reference = doc(db, "shared_accounts", slug)
+        const snapshot = await transaction.get(reference)
+        const latest = snapshot.data()
+        const participants = [...(latest.participants || [])]
+        const existing = participants.find((entry) => entry.id === requestedId)
+        const placeholder = participants.find((entry) => !entry.isCreator && !entry.name)
+        const participant = existing || placeholder || { id: requestedId, name: "", amountCents: 0, status: "pending", isCreator: false, selections: {} }
+        selectedId = participant.id
+        participant.name = name
+        participant.status = participant.selections && Object.keys(participant.selections).length ? "selecting" : "pending"
+        if (!existing && !placeholder) participants.push(participant)
+        transaction.update(reference, { participants, updatedAt: serverTimestamp() })
       })
-    )
+      setParticipantId(selectedId)
+      setGuestName(name)
+      localStorage.setItem(`tedebo-name-${slug}`, name)
+      localStorage.setItem(`tedebo-participant-${slug}`, selectedId)
+    } catch {
+      setError("No pudimos registrarte en la cuenta. Intentá de nuevo.")
+    } finally { setJoining(false) }
   }
 
-  const calculateMyPart = () => {
-    return products.reduce((total, product) => {
-      if (product.selected === 0) {
-        return total
-      }
+  const participant = account?.participants?.find((entry) => entry.id === participantId)
+  const myPart = participant ? participantAmount(account, participant) : 0
+  const assignedPart = participant?.amountCents || 0
+  const isItemMode = account?.mode === "items"
+  const paidAmount = (account?.participants || []).filter((entry) => entry.status === "paid").reduce((total, entry) => total + (entry.amountCents || 0), 0)
 
-      if (product.shared) {
-        return total + product.price / product.selected
-      }
-
-      return total + product.price
-    }, 0)
+  const changeSelection = async (item, amount) => {
+    if (!participant || !account) return
+    try {
+      await runTransaction(db, async (transaction) => {
+        const reference = doc(db, "shared_accounts", slug)
+        const snapshot = await transaction.get(reference)
+        const latest = snapshot.data()
+        const participants = [...(latest.participants || [])]
+        const current = participants.find((entry) => entry.id === participant.id)
+        if (!current) return
+        const currentQuantity = Number(current.selections?.[item.id] || 0)
+        const usedByOthers = participants.reduce((total, entry) => total + Number(entry.selections?.[item.id] || 0), 0) - currentQuantity
+        const next = Math.max(0, Math.min(item.quantity - usedByOthers, currentQuantity + amount))
+        current.selections = { ...(current.selections || {}) }
+        if (next) current.selections[item.id] = next
+        else delete current.selections[item.id]
+        current.amountCents = participantAmount(latest, current)
+        current.status = Object.keys(current.selections).length ? "selecting" : "pending"
+        transaction.update(reference, { participants, updatedAt: serverTimestamp() })
+      })
+    } catch { setError("No pudimos guardar ese cambio. Intentá de nuevo.") }
   }
 
-  const myPart = calculateMyPart()
-
-  /*
-   * Por ahora simulamos cuánto de la cuenta ya fue pagado.
-   * Más adelante este valor vendrá del backend/Firebase.
-   */
-  const initialPaidAmount = 0
-
-  const [paidAmount, setPaidAmount] = useState(initialPaidAmount)
-
-  const progressPercentage = Math.min(
-    100,
-    Math.round((paidAmount / account.total) * 100)
-  )
-
-  const isAccountSettled = paidAmount >= account.total
-
-  const handleTransfer = () => {
-    const newPaidAmount = Math.min(
-      account.total,
-      paidAmount + Math.round(myPart)
-    )
-
-    setPaidAmount(newPaidAmount)
-    setPaid(true)
+  const updateStatus = async (status) => {
+    if (!participant) return
+    await runTransaction(db, async (transaction) => {
+      const reference = doc(db, "shared_accounts", slug)
+      const snapshot = await transaction.get(reference)
+      const participants = [...(snapshot.data().participants || [])]
+      const current = participants.find((entry) => entry.id === participant.id)
+      if (current) current.status = status
+      transaction.update(reference, { participants, updatedAt: serverTimestamp() })
+    })
   }
 
-  const handleClose = () => {
-    setClosed(true)
-  }
-
-  if (closed) {
-    return (
-      <main className="page">
-        <section className="container confirmation-page">
-
-          <div className="confirmation-icon">
-            👋
-          </div>
-
-          <h1>
-            ¡Gracias!
-          </h1>
-
-          <p className="confirmation-subtitle">
-            Ya podés cerrar esta pestaña.
-          </p>
-
-        </section>
-      </main>
-    )
-  }
+  if (error && !account) return <main className="page"><section className="container confirmation-page"><div className="confirmation-icon">!</div><h1>Cuenta no disponible</h1><p className="confirmation-subtitle">{error}</p></section></main>
+  if (!account) return <main className="page"><section className="container confirmation-page"><div className="confirmation-icon">...</div><h1>Cargando cuenta</h1></section></main>
+  if (!guestName || !participant) return <NameStep onSubmit={joinAccount} loading={joining} />
 
   if (confirmed) {
-    if (isAccountSettled) {
-      return (
-        <main className="page">
-          <section className="container confirmation-page">
-
-            <div className="confirmation-icon">
-              🎉
-            </div>
-
-            <h1>
-              ¡Cuenta saldada!
-            </h1>
-
-            <p className="confirmation-subtitle">
-              Todos ya pagaron su parte.
-            </p>
-
-            <strong className="confirmation-total">
-              $0
-            </strong>
-
-            <div className="thanks-card">
-              <p>
-                La cuenta de {account.createdBy} ya está completa 🙌
-              </p>
-
-              <span>
-                Esta cuenta está cerrada.
-              </span>
-            </div>
-
-            <button
-              className="back-button"
-              onClick={handleClose}
-            >
-              CERRAR
-            </button>
-
-          </section>
-        </main>
-      )
-    }
-
-    return (
-      <main className="page">
-        <section className="container confirmation-page">
-
-          <div className="confirmation-icon">
-            {paid ? "✅" : "🎉"}
-          </div>
-
-          <h1>
-            {paid ? "¡Pago registrado!" : "¡Listo!"}
-          </h1>
-
-          <p className="confirmation-subtitle">
-            Tu parte de la cuenta es
-          </p>
-
-          <strong className="confirmation-total">
-            ${Math.round(myPart).toLocaleString("es-AR")}
-          </strong>
-
-          <div className="thanks-card">
-            <p>
-              Gracias, {account.createdBy}, por pagar 🙌
-            </p>
-
-            <span>
-              {paid
-                ? "Tu pago fue registrado correctamente."
-                : "Tu selección fue registrada correctamente."}
-            </span>
-          </div>
-
-          <div className="status-card">
-            <h2>
-              Progreso de la cuenta
-            </h2>
-
-            <div className="progress-bar">
-              <div
-                className="progress"
-                style={{
-                  width: `${progressPercentage}%`,
-                }}
-              ></div>
-            </div>
-
-            <div className="progress-info">
-              <span>
-                ${paidAmount.toLocaleString("es-AR")} de{" "}
-                ${account.total.toLocaleString("es-AR")}
-              </span>
-
-              <strong>
-                {progressPercentage}%
-              </strong>
-            </div>
-          </div>
-
-          {!paid && (
-            <button
-              className="confirm-button transfer-button"
-              onClick={handleTransfer}
-            >
-              💸 TRANSFERIR $
-              {Math.round(myPart).toLocaleString("es-AR")}
-            </button>
-          )}
-
-          {paid && (
-            <button
-              className="back-button"
-              onClick={handleClose}
-            >
-              CERRAR
-            </button>
-          )}
-
-          {!paid && (
-            <button
-              className="back-button"
-              onClick={() => setConfirmed(false)}
-            >
-              VOLVER A EDITAR
-            </button>
-          )}
-
-        </section>
-      </main>
-    )
+    const percentage = Math.min(100, Math.round((paidAmount / account.totalCents) * 100))
+    return <main className="page"><section className="container confirmation-page"><div className="confirmation-icon">{paid ? "OK" : "Listo"}</div><h1>{paid ? "Pago registrado" : "Selección registrada"}</h1><p className="confirmation-subtitle">{guestName}, tu parte es</p><strong className="confirmation-total">{money(isItemMode ? myPart : assignedPart)}</strong><div className="thanks-card"><p>La cuenta de {account.creatorName} está al día.</p><span>El creador verá tu selección en tiempo real.</span>{account.creatorAliasCbu && <strong className="alias">Alias/CBU: {account.creatorAliasCbu}</strong>}</div><div className="status-card"><h2>Progreso de la cuenta</h2><div className="progress-bar"><div className="progress" style={{ width: `${percentage}%` }} /></div><div className="progress-info"><span>{money(paidAmount)} de {money(account.totalCents)}</span><strong>{percentage}%</strong></div></div>{!paid && <button className="confirm-button transfer-button" onClick={async () => { await updateStatus("paid"); setPaid(true) }}>REGISTRAR PAGO</button>}{paid && <button className="back-button" onClick={() => window.close()}>CERRAR</button>}{!paid && <button className="back-button" onClick={() => setConfirmed(false)}>VOLVER A EDITAR</button>}</section></main>
   }
 
-  return (
-    <main className="page">
-      <section className="container">
-
-        <header className="header">
-          <div className="logo">
-            Te <span>Debo</span>
-          </div>
-
-          <div className="account-info">
-            <h1>{account.title}</h1>
-
-            <p>
-              Creada por {account.createdBy}
-            </p>
-          </div>
-        </header>
-
-        <div className="total-card">
-          <span>
-            Total del ticket
-          </span>
-
-          <strong>
-            ${account.total.toLocaleString("es-AR")}
-          </strong>
-        </div>
-
-        <section className="products-card">
-
-          <div className="section-title">
-            <h2>
-              Seleccioná lo que consumiste
-            </h2>
-
-            <p>
-              Los productos compartidos se dividen entre quienes los
-              seleccionen.
-            </p>
-          </div>
-
-          <div className="products">
-
-            {products.map((product) => (
-              <div
-                className="product"
-                key={product.id}
-              >
-
-                <div className="product-icon">
-                  {product.icon}
-                </div>
-
-                <div className="product-info">
-                  <h3>
-                    {product.name}
-                  </h3>
-
-                  <p>
-                    {product.quantity > 1
-                      ? `${product.quantity} unidades`
-                      : "1 unidad"}
-                  </p>
-
-                  {product.shared && (
-                    <small>
-                      Compartido
-                    </small>
-                  )}
-                </div>
-
-                <div className="product-right">
-
-                  <div className="product-price">
-                    ${product.price.toLocaleString("es-AR")}
-                  </div>
-
-                  <div className="counter">
-
-                    <button
-                      onClick={() =>
-                        changeSelection(product.id, -1)
-                      }
-                    >
-                      −
-                    </button>
-
-                    <span>
-                      {product.selected}
-                    </span>
-
-                    <button
-                      onClick={() =>
-                        changeSelection(product.id, 1)
-                      }
-                    >
-                      +
-                    </button>
-
-                  </div>
-
-                </div>
-
-              </div>
-            ))}
-
-          </div>
-        </section>
-
-        <section className="bottom-card">
-
-          <div>
-            <span>
-              Tu parte
-            </span>
-
-            <strong>
-              ${Math.round(myPart).toLocaleString("es-AR")}
-            </strong>
-          </div>
-
-          <button
-            className="confirm-button"
-            onClick={() => setConfirmed(true)}
-            disabled={myPart === 0}
-          >
-            CONFIRMAR
-          </button>
-
-        </section>
-
-      </section>
-    </main>
-  )
+  return <main className="page"><section className="container"><header className="header"><div className="logo">Te <span>Debo</span></div><div className="account-info"><h1>{account.name}</h1><p>Creada por {account.creatorName} · Hola, {guestName}</p></div></header><div className="total-card"><span>Total del ticket</span><strong>{money(account.totalCents)}</strong></div><section className="products-card"><div className="section-title"><h2>{isItemMode ? "Seleccioná lo que consumiste" : "Tu parte de la cuenta"}</h2><p>{isItemMode ? "Elegí las unidades que te corresponden. Los productos compartidos se reparten entre quienes los seleccionen." : account.mode === "equal" ? "Tu parte fue calculada por el creador en partes iguales." : "El creador asignará tu parte manualmente."}</p></div>{isItemMode ? <div className="products">{(account.items || []).map((item) => { const selected = Number(participant.selections?.[item.id] || 0); return <div className="product" key={item.id}><div className="product-info"><h3>{item.name}</h3><p>{item.quantity > 1 ? `${item.quantity} unidades` : "1 unidad"}</p></div><div className="product-right"><div className="product-price">{money(item.totalCents)}</div><div className="counter"><button onClick={() => changeSelection(item, -1)} disabled={!selected}>-</button><span>{selected}</span><button onClick={() => changeSelection(item, 1)} disabled={selected >= item.quantity}>+</button></div></div></div> })}</div> : <div className="assigned-part"><span>{assignedPart ? "Monto asignado" : "Monto pendiente de asignación"}</span><strong>{assignedPart ? money(assignedPart) : "A confirmar"}</strong></div>}</section><section className="bottom-card"><div><span>Tu parte</span><strong>{money(isItemMode ? myPart : assignedPart)}</strong></div><button className="confirm-button" onClick={async () => { await updateStatus("confirmed"); setConfirmed(true) }} disabled={isItemMode && !myPart}>CONFIRMAR</button></section></section></main>
 }
 
-function App() {
-  return (
-    <Routes>
-      <Route
-        path="/"
-        element={<AccountPage />}
-      />
-
-      <Route
-        path="/c/:slug"
-        element={<AccountPage />}
-      />
-    </Routes>
-  )
-}
-
+function App() { return <Routes><Route path="/" element={<AccountPage />} /><Route path="/c/:slug" element={<AccountPage />} /></Routes> }
 export default App

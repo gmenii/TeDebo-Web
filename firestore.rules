@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /shared_accounts/{accountId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      // Guests can update only the shared participant state from the public link.
+      allow update: if request.auth != null
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'updatedAt']);
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
