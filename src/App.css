@@ -3,6 +3,22 @@
   padding: 40px 20px;
 }
 
+.account-page {
+  background: #020312;
+  color: #f6f6f7;
+}
+
+.account-page .container {
+  width: min(680px, 100%);
+}
+
+.account-logo {
+  display: block;
+  width: 150px;
+  height: auto;
+  margin: 0 auto 28px;
+}
+
 .container {
   width: min(680px, 100%);
   margin: 0 auto;
@@ -357,8 +373,8 @@
   padding-top: 48px;
 }
 
-.name-page .logo {
-  text-align: center;
+.name-page .account-logo {
+  margin-bottom: 32px;
 }
 
 .name-card {
@@ -422,6 +438,10 @@
 .header {
   text-align: center;
   margin-bottom: 28px;
+}
+
+.account-page .header .account-logo {
+  margin-bottom: 22px;
 }
 
 .logo {

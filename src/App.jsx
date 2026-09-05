@@ -150,11 +150,13 @@ function LandingPage() {
 function NameStep({ onSubmit, loading }) {
   const [name, setName] = useState("");
   return (
-    <main className="page">
+    <main className="page account-page">
       <section className="container name-page">
-        <div className="logo">
-          Te <span>Debo</span>
-        </div>
+        <img
+          className="account-logo"
+          src="/assets/logo_tedebo.png"
+          alt="Te Debo"
+        />
         <div className="name-card">
           <div className="eyebrow">Una cuenta compartida</div>
           <h1>¿Cómo te llamás?</h1>
@@ -289,9 +291,12 @@ function AccountPage() {
   const myPart = participant ? participantAmount(account, participant) : 0;
   const assignedPart = participant?.amountCents || 0;
   const isItemMode = account?.mode === "items";
-  const paidAmount = (account?.participants || [])
-    .filter((entry) => entry.status === "paid")
-    .reduce((total, entry) => total + (entry.amountCents || 0), 0);
+  const paidAmount = Math.min(
+    account?.totalCents || 0,
+    (account?.participants || [])
+      .filter((entry) => entry.status === "paid")
+      .reduce((total, entry) => total + Number(entry.amountCents || 0), 0),
+  );
 
   const changeSelection = async (item, amount) => {
     if (!participant || !account) return;
@@ -349,7 +354,7 @@ function AccountPage() {
 
   if (error && !account)
     return (
-      <main className="page">
+      <main className="page account-page">
         <section className="container confirmation-page">
           <div className="confirmation-icon">!</div>
           <h1>Cuenta no disponible</h1>
@@ -431,12 +436,14 @@ function AccountPage() {
   }
 
   return (
-    <main className="page">
+    <main className="page account-page">
       <section className="container">
         <header className="header">
-          <div className="logo">
-            Te <span>Debo</span>
-          </div>
+          <img
+            className="account-logo"
+            src="/assets/logo_tedebo.png"
+            alt="Te Debo"
+          />
           <div className="account-info">
             <h1>{account.name}</h1>
             <p>
