@@ -1,6 +1,6 @@
 :root {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-  color: #F6F6F7;
+  color: #f6f6f7;
   background: #020312;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,4 +17,7 @@ body {
   background: #020312;
 }
 
-button, input { font: inherit; }
+button,
+input {
+  font: inherit;
+}
