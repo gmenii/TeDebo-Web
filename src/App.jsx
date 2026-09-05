@@ -16,7 +16,7 @@ const accounts = {
         price: 12500,
         selected: 1,
         shared: false,
-        icon: "🍕",
+  
       },
       {
         id: 2,
@@ -25,7 +25,6 @@ const accounts = {
         price: 8500,
         selected: 2,
         shared: true,
-        icon: "🍟",
       },
       {
         id: 3,
@@ -34,7 +33,6 @@ const accounts = {
         price: 15000,
         selected: 1,
         shared: false,
-        icon: "🍔",
       },
       {
         id: 4,
@@ -43,7 +41,6 @@ const accounts = {
         price: 5000,
         selected: 2,
         shared: true,
-        icon: "🥤",
       },
     ],
   },
@@ -61,7 +58,6 @@ const accounts = {
         price: 28000,
         selected: 1,
         shared: false,
-        icon: "🥩",
       },
       {
         id: 2,
@@ -70,7 +66,6 @@ const accounts = {
         price: 9000,
         selected: 2,
         shared: true,
-        icon: "🥔",
       },
       {
         id: 3,
@@ -79,7 +74,6 @@ const accounts = {
         price: 6000,
         selected: 2,
         shared: true,
-        icon: "🥤",
       },
     ],
   },
