@@ -513,3 +513,63 @@
     font-size: 13px;
   }
 }
+
+.landing-page {
+  min-height: 100vh;
+  overflow: hidden;
+  color: #25142f;
+  background: #f5eee5;
+}
+
+.landing-nav {
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 26px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid rgba(37, 20, 47, 0.14);
+}
+
+.landing-nav img { width: 132px; height: auto; }
+.landing-nav span { color: #6d5a70; font-size: 14px; }
+
+.landing-hero {
+  width: min(1160px, calc(100% - 48px));
+  min-height: 610px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: 70px;
+}
+
+.landing-copy { max-width: 600px; }
+.landing-copy .eyebrow { color: #936648; }
+.landing-copy h1 { margin: 16px 0 22px; font-size: clamp(42px, 6vw, 76px); line-height: 0.98; letter-spacing: -2px; }
+.landing-copy h1 em { color: #8b5cf6; font-style: normal; }
+.landing-copy p { max-width: 520px; color: #6d5a70; font-size: 18px; line-height: 1.6; }
+.store-button { margin-top: 18px; padding: 15px 20px; border: 0; border-radius: 12px; background: #25142f; color: white; font-weight: 800; cursor: not-allowed; opacity: 0.75; }
+.store-button span { display: block; margin-top: 4px; color: #d8b8ff; font-size: 11px; font-weight: 500; }
+.landing-art { display: grid; place-items: center; }
+.landing-art img { width: min(100%, 450px); filter: drop-shadow(0 28px 28px rgba(48, 22, 58, 0.2)); transform: rotate(4deg); }
+
+.how-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; padding: 56px max(24px, calc((100% - 1160px) / 2)); background: #25142f; color: white; }
+.how-section > div { padding-right: 24px; border-right: 1px solid rgba(255,255,255,0.2); }
+.how-section > div:last-child { border-right: 0; }
+.step-number { color: #d8b8ff; font-size: 13px; font-weight: 800; }
+.how-section h2 { margin: 12px 0 8px; font-size: 24px; }
+.how-section p { margin: 0; color: #d8cbd9; line-height: 1.5; }
+
+@media (max-width: 720px) {
+  .landing-nav, .landing-hero { width: min(100% - 32px, 560px); }
+  .landing-nav span { display: none; }
+  .landing-hero { min-height: 0; grid-template-columns: 1fr; gap: 30px; padding: 64px 0 72px; }
+  .landing-copy h1 { font-size: 48px; }
+  .landing-copy p { font-size: 16px; }
+  .landing-art img { width: 72%; }
+  .how-section { grid-template-columns: 1fr; gap: 26px; padding: 42px 24px; }
+  .how-section > div { padding: 0 0 24px; border-right: 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+  .how-section > div:last-child { border-bottom: 0; }
+}

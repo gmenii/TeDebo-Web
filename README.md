@@ -19,6 +19,9 @@ VITE_FIREBASE_APP_ID=...
 ```
 
 Publicar `firestore.rules` en el proyecto Firebase antes de probar la web.
+Los links nuevos incluyen `expiresAt` a los 7 días; los links antiguos se
+validan usando `createdAt`. Para borrado automático de documentos sin visitas,
+configurá una política TTL de Firestore sobre el campo `expiresAt`.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

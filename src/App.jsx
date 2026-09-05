@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Routes, Route, useParams } from "react-router-dom"
-import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore"
+import { doc, onSnapshot, runTransaction, serverTimestamp, Timestamp } from "firebase/firestore"
 import { db } from "./firebase"
 import "./App.css"
 
@@ -14,6 +14,14 @@ const participantAmount = (account, participant) => (account.items || []).reduce
   const unit = Math.floor(item.totalCents / units)
   return total + quantity * unit + Math.min(quantity, item.totalCents % units)
 }, 0)
+
+function LandingPage() {
+  return <main className="landing-page">
+    <nav className="landing-nav"><img src="/assets/logo_tedebo.png" alt="Te Debo" /><span>Dividí la cuenta sin hacer cuentas.</span></nav>
+    <section className="landing-hero"><div className="landing-copy"><div className="eyebrow">La forma simple de dividir un ticket</div><h1>Cada uno paga lo suyo.<br /><em>Sin perseguir a nadie.</em></h1><p>Escaneá tu ticket, elegí cómo dividirlo y compartí un link. Tus amigos seleccionan lo que consumieron y todos saben cuánto deben.</p><button className="store-button" disabled>Descargar en Google Play <span>Próximamente</span></button></div><div className="landing-art"><img src="/assets/wallet.png" alt="Cuenta compartida en Te Debo" /></div></section>
+    <section className="how-section"><div><span className="step-number">01</span><h2>Escaneá</h2><p>La app reconoce los productos de tu ticket.</p></div><div><span className="step-number">02</span><h2>Dividí</h2><p>Elegí por productos, partes iguales o montos personalizados.</p></div><div><span className="step-number">03</span><h2>Compartí</h2><p>Mandá un único link y mirá el progreso en tiempo real.</p></div></section>
+  </main>
+}
 
 function NameStep({ onSubmit, loading }) {
   const [name, setName] = useState("")
@@ -39,7 +47,15 @@ function AccountPage() {
     if (!slug) return undefined
     return onSnapshot(doc(db, "shared_accounts", slug), (snapshot) => {
       if (!snapshot.exists()) { setError("No encontramos una cuenta con ese código."); return }
-      setAccount({ id: snapshot.id, ...snapshot.data() })
+      const data = snapshot.data()
+      const expiresAt = data.expiresAt
+      const createdAt = typeof data.createdAt === "string" ? new Date(data.createdAt) : null
+      const expiration = expiresAt instanceof Timestamp ? expiresAt.toDate() : createdAt ? new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000) : null
+      if (expiration && expiration <= new Date()) {
+        setError("Este link venció. Pedile al creador que genere una cuenta nueva.")
+        return
+      }
+      setAccount({ id: snapshot.id, ...data })
       setError("")
     }, () => setError("No pudimos cargar la cuenta. Revisá la conexión e intentá de nuevo."))
   }, [slug])
@@ -126,5 +142,5 @@ function AccountPage() {
   return <main className="page"><section className="container"><header className="header"><div className="logo">Te <span>Debo</span></div><div className="account-info"><h1>{account.name}</h1><p>Creada por {account.creatorName} · Hola, {guestName}</p></div></header><div className="total-card"><span>Total del ticket</span><strong>{money(account.totalCents)}</strong></div><section className="products-card"><div className="section-title"><h2>{isItemMode ? "Seleccioná lo que consumiste" : "Tu parte de la cuenta"}</h2><p>{isItemMode ? "Elegí las unidades que te corresponden. Los productos compartidos se reparten entre quienes los seleccionen." : account.mode === "equal" ? "Tu parte fue calculada por el creador en partes iguales." : "El creador asignará tu parte manualmente."}</p></div>{isItemMode ? <div className="products">{(account.items || []).map((item) => { const selected = Number(participant.selections?.[item.id] || 0); return <div className="product" key={item.id}><div className="product-info"><h3>{item.name}</h3><p>{item.quantity > 1 ? `${item.quantity} unidades` : "1 unidad"}</p></div><div className="product-right"><div className="product-price">{money(item.totalCents)}</div><div className="counter"><button onClick={() => changeSelection(item, -1)} disabled={!selected}>-</button><span>{selected}</span><button onClick={() => changeSelection(item, 1)} disabled={selected >= item.quantity}>+</button></div></div></div> })}</div> : <div className="assigned-part"><span>{assignedPart ? "Monto asignado" : "Monto pendiente de asignación"}</span><strong>{assignedPart ? money(assignedPart) : "A confirmar"}</strong></div>}</section><section className="bottom-card"><div><span>Tu parte</span><strong>{money(isItemMode ? myPart : assignedPart)}</strong></div><button className="confirm-button" onClick={async () => { await updateStatus("confirmed"); setConfirmed(true) }} disabled={isItemMode && !myPart}>CONFIRMAR</button></section></section></main>
 }
 
-function App() { return <Routes><Route path="/" element={<AccountPage />} /><Route path="/c/:slug" element={<AccountPage />} /></Routes> }
+function App() { return <Routes><Route path="/" element={<LandingPage />} /><Route path="/c/:slug" element={<AccountPage />} /></Routes> }
 export default App
