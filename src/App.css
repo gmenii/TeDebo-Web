@@ -831,6 +831,11 @@
   margin-bottom: 12px;
 }
 
+.transfer-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 /* BACK */
 
 .back-button {

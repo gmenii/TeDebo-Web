@@ -23,6 +23,26 @@ Los links nuevos incluyen `expiresAt` a los 7 días; los links antiguos se
 validan usando `createdAt`. Para borrado automático de documentos sin visitas,
 configurá una política TTL de Firestore sobre el campo `expiresAt`.
 
+## Mercado Pago OAuth
+
+Configurar en Vercel las siguientes variables, sin incluirlas en el frontend:
+
+```env
+APP_URL=https://te-debo-web.vercel.app
+MP_CLIENT_ID=...
+MP_CLIENT_SECRET=...
+MP_OAUTH_STATE_SECRET=...
+FIREBASE_SERVICE_ACCOUNT_JSON={...}
+```
+
+En la aplicación de Mercado Pago, registrar exactamente:
+`https://te-debo-web.vercel.app/api/mercadopago-callback`.
+
+El creador debe vincular Mercado Pago desde Perfil antes de que los invitados
+puedan pagar. El refresh token se guarda sólo en `payment_connections` y no se
+expone a Firestore desde el navegador. Las funciones crean preferencias de
+Checkout Pro y verifican el pago aprobado antes de marcarlo como pagado.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

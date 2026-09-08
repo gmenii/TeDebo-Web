@@ -202,6 +202,7 @@ function AccountPage() {
   const [joining, setJoining] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     if (!slug) return undefined;
@@ -237,6 +238,24 @@ function AccountPage() {
         ),
     );
   }, [slug]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentId = params.get("payment_id") || params.get("collection_id");
+    if (!paymentId || !participantId || !slug) return;
+    fetch("/api/verify-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId, slug, participantId }),
+    })
+      .then((response) => response.json())
+      .then((result) => {
+        if (result.paid) setPaid(true);
+        else if (result.error)
+          setError("No pudimos confirmar el pago todavía.");
+      })
+      .catch(() => setError("No pudimos confirmar el pago todavía."));
+  }, [participantId, slug]);
 
   const joinAccount = async (name) => {
     if (!name || !account) return;
@@ -288,6 +307,9 @@ function AccountPage() {
   const participant = account?.participants?.find(
     (entry) => entry.id === participantId,
   );
+  const isPaid = paid || participant?.status === "paid";
+  const isConfirmed =
+    confirmed || isPaid || participant?.status === "confirmed";
   const myPart = participant ? participantAmount(account, participant) : 0;
   const assignedPart = participant?.amountCents || 0;
   const isItemMode = account?.mode === "items";
@@ -352,6 +374,32 @@ function AccountPage() {
     });
   };
 
+  const startPayment = async () => {
+    if (!participant || !account || paying) return;
+    setPaying(true);
+    try {
+      const response = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, participantId: participant.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.checkoutUrl) {
+        setError(
+          result.error === "creator_not_connected"
+            ? "El creador todavía no vinculó Mercado Pago."
+            : "No pudimos iniciar el pago.",
+        );
+        return;
+      }
+      window.location.assign(result.checkoutUrl);
+    } catch {
+      setError("No pudimos iniciar el pago.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   if (error && !account)
     return (
       <main className="page account-page">
@@ -374,7 +422,7 @@ function AccountPage() {
   if (!guestName || !participant)
     return <NameStep onSubmit={joinAccount} loading={joining} />;
 
-  if (confirmed) {
+  if (isConfirmed) {
     const percentage = Math.min(
       100,
       Math.round((paidAmount / account.totalCents) * 100),
@@ -382,8 +430,8 @@ function AccountPage() {
     return (
       <main className="page">
         <section className="container confirmation-page">
-          <div className="confirmation-icon">{paid ? "OK" : "Listo"}</div>
-          <h1>{paid ? "Pago registrado" : "Selección registrada"}</h1>
+          <div className="confirmation-icon">{isPaid ? "OK" : "Listo"}</div>
+          <h1>{isPaid ? "Pago registrado" : "Selección registrada"}</h1>
           <p className="confirmation-subtitle">{guestName}, tu parte es</p>
           <strong className="confirmation-total">
             {money(isItemMode ? myPart : assignedPart)}
@@ -409,23 +457,23 @@ function AccountPage() {
               <strong>{percentage}%</strong>
             </div>
           </div>
-          {!paid && (
+          {!isPaid && (
             <button
               className="confirm-button transfer-button"
-              onClick={async () => {
-                await updateStatus("paid");
-                setPaid(true);
-              }}
+              onClick={startPayment}
+              disabled={paying}
             >
-              REGISTRAR PAGO
+              {paying
+                ? "ABRIENDO MERCADO PAGO..."
+                : `PAGAR ${money(isItemMode ? myPart : assignedPart)}`}
             </button>
           )}
-          {paid && (
+          {isPaid && (
             <button className="back-button" onClick={() => window.close()}>
               CERRAR
             </button>
           )}
-          {!paid && (
+          {!isPaid && (
             <button className="back-button" onClick={() => setConfirmed(false)}>
               VOLVER A EDITAR
             </button>
