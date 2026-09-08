@@ -1,23 +1,61 @@
 import crypto from "node:crypto";
 import admin from "firebase-admin";
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
-  : null;
-
-if (!admin.apps.length) {
-  admin.initializeApp(
-    serviceAccount
-      ? { credential: admin.credential.cert(serviceAccount) }
-      : { credential: admin.credential.applicationDefault() },
-  );
-}
-
-export const firestore = admin.firestore();
-export const timestamp = admin.firestore.Timestamp;
 export const appUrl = (
   process.env.APP_URL || "https://te-debo-web.vercel.app"
 ).replace(/\/$/, "");
+
+function serviceAccountFromEnvironment() {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    try {
+      return JSON.parse(
+        Buffer.from(
+          process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+          "base64",
+        ).toString("utf8"),
+      );
+    } catch {
+      throw new Error("invalid_firebase_service_account_base64");
+    }
+  }
+
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    } catch {
+      throw new Error("invalid_firebase_service_account_json");
+    }
+  }
+
+  if (
+    process.env.FIREBASE_PROJECT_ID &&
+    process.env.FIREBASE_CLIENT_EMAIL &&
+    process.env.FIREBASE_PRIVATE_KEY
+  ) {
+    return {
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    };
+  }
+
+  throw new Error(
+    "firebase_admin_not_configured: set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY",
+  );
+}
+
+export function getAdmin() {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccountFromEnvironment()),
+    });
+  }
+  return admin;
+}
+
+export function getFirestore() {
+  return getAdmin().firestore();
+}
 
 export function json(res, status, body) {
   res.status(status).setHeader("Content-Type", "application/json").json(body);
@@ -35,7 +73,7 @@ export function getBearerToken(req) {
 export async function verifyFirebaseToken(req) {
   const token = getBearerToken(req) || req.query?.id_token;
   if (!token) throw new Error("missing_firebase_token");
-  return admin.auth().verifyIdToken(token);
+  return getAdmin().auth().verifyIdToken(token);
 }
 
 export function signState(payload) {
@@ -82,7 +120,7 @@ export async function refreshMercadoPagoToken(connection) {
     {
       mpRefreshToken: data.refresh_token || connection.mpRefreshToken,
       mpUserId: String(data.user_id || connection.mpUserId || ""),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
     },
     { merge: true },
   );

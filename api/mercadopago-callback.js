@@ -1,12 +1,12 @@
 import {
   appUrl,
-  firestore,
+  getAdmin,
+  getFirestore,
   json,
   readState,
   redirect,
   requireMethod,
 } from "./_lib.js";
-import admin from "firebase-admin";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "GET")) return;
@@ -36,15 +36,15 @@ export default async function handler(req, res) {
       throw new Error("mercadopago_token_exchange_failed");
     }
 
-    await firestore
+      await getFirestore()
       .collection("payment_connections")
       .doc(state.uid)
       .set({
         mpRefreshToken: token.refresh_token,
         mpUserId: String(token.user_id || ""),
         provider: "mercadopago",
-        connectedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        connectedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
+        updatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
       });
     return redirect(res, `${state.returnUrl}&mercadopago=connected`);
   } catch (error) {
