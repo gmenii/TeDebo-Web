@@ -1,8 +1,5 @@
 import crypto from "node:crypto";
-import admin from "firebase-admin";
-
 import { getApps, initializeApp, cert } from "firebase-admin/app";
-
 import { getAuth } from "firebase-admin/auth";
 
 export const appUrl = (
@@ -70,12 +67,6 @@ export function getAdmin() {
   if (getApps().length === 0) {
     const credentials = serviceAccountFromEnvironment();
 
-    console.log("Firebase credential object:", {
-      project_id: Boolean(credentials?.project_id),
-      client_email: Boolean(credentials?.client_email),
-      private_key: Boolean(credentials?.private_key),
-    });
-
     if (!credentials?.project_id) {
       throw new Error("firebase_missing_project_id");
     }
@@ -93,7 +84,7 @@ export function getAdmin() {
     });
   }
 
-  return admin;
+  return getApps()[0];
 }
 
 export function getFirestore() {
