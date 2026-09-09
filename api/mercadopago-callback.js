@@ -1,3 +1,5 @@
+import { FieldValue } from "firebase-admin/firestore";
+
 import {
   appUrl,
   getAdmin,
@@ -76,7 +78,6 @@ export default async function handler(req, res) {
     }
 
     const db = getFirestore();
-    const FieldValue = getAdmin().firestore.FieldValue;
 
     await db
       .collection("payment_connections")
