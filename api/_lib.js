@@ -111,6 +111,8 @@ export async function verifyFirebaseToken(req) {
     throw new Error("missing_firebase_token");
   }
 
+  getAdmin();
+
   return getAuth().verifyIdToken(token);
 }
 
