@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import admin from "firebase-admin";
+import { getApps, initializeApp, cert } from "firebase-admin/app";
 
 export const appUrl = (
   process.env.APP_URL || "https://te-debo-web.vercel.app"
@@ -63,28 +64,7 @@ function serviceAccountFromEnvironment() {
 }
 
 export function getAdmin() {
-  console.log("=== FIREBASE DEBUG ===");
-
-  console.log("PROJECT_ID exists:", Boolean(process.env.FIREBASE_PROJECT_ID));
-
-  console.log(
-    "CLIENT_EMAIL exists:",
-    Boolean(process.env.FIREBASE_CLIENT_EMAIL),
-  );
-
-  console.log("PRIVATE_KEY exists:", Boolean(process.env.FIREBASE_PRIVATE_KEY));
-
-  console.log(
-    "SERVICE_ACCOUNT_JSON exists:",
-    Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON),
-  );
-
-  console.log(
-    "SERVICE_ACCOUNT_BASE64 exists:",
-    Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64),
-  );
-
-  if (!admin.apps.length) {
+  if (getApps().length === 0) {
     const credentials = serviceAccountFromEnvironment();
 
     console.log("Firebase credential object:", {
@@ -105,8 +85,8 @@ export function getAdmin() {
       throw new Error("firebase_missing_private_key");
     }
 
-    admin.initializeApp({
-      credential: admin.credential.cert(credentials),
+    initializeApp({
+      credential: cert(credentials),
     });
   }
 
