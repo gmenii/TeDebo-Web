@@ -21,8 +21,20 @@ function serviceAccountFromEnvironment() {
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     try {
-      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    } catch {
+      const serviceAccount = JSON.parse(
+        process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+      );
+
+      console.log("Firebase JSON fields:", {
+        project_id: Boolean(serviceAccount.project_id),
+        client_email: Boolean(serviceAccount.client_email),
+        private_key: Boolean(serviceAccount.private_key),
+      });
+
+      return serviceAccount;
+    } catch (error) {
+      console.error("Firebase JSON parse error:", error);
+
       throw new Error("invalid_firebase_service_account_json");
     }
   }
@@ -32,16 +44,22 @@ function serviceAccountFromEnvironment() {
     process.env.FIREBASE_CLIENT_EMAIL &&
     process.env.FIREBASE_PRIVATE_KEY
   ) {
+    console.log("Firebase separate credentials:", {
+      project_id: Boolean(process.env.FIREBASE_PROJECT_ID),
+      client_email: Boolean(process.env.FIREBASE_CLIENT_EMAIL),
+      private_key: Boolean(process.env.FIREBASE_PRIVATE_KEY),
+    });
+
     return {
       project_id: process.env.FIREBASE_PROJECT_ID,
+
       client_email: process.env.FIREBASE_CLIENT_EMAIL,
+
       private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
     };
   }
 
-  throw new Error(
-    "firebase_admin_not_configured: set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY",
-  );
+  throw new Error("firebase_admin_not_configured");
 }
 
 export function getAdmin() {
