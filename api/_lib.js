@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import admin from "firebase-admin";
+
 import { getApps, initializeApp, cert } from "firebase-admin/app";
+
+import { getAuth } from "firebase-admin/auth";
 
 export const appUrl = (
   process.env.APP_URL || "https://te-debo-web.vercel.app"
@@ -112,8 +115,12 @@ export function getBearerToken(req) {
 
 export async function verifyFirebaseToken(req) {
   const token = getBearerToken(req) || req.query?.id_token;
-  if (!token) throw new Error("missing_firebase_token");
-  return getAdmin().auth().verifyIdToken(token);
+
+  if (!token) {
+    throw new Error("missing_firebase_token");
+  }
+
+  return getAuth().verifyIdToken(token);
 }
 
 export function signState(payload) {
