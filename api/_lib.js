@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore as getFirestoreAdmin } from "firebase-admin/firestore";
 
 export const appUrl = (
   process.env.APP_URL || "https://te-debo-web.vercel.app"
@@ -88,7 +89,8 @@ export function getAdmin() {
 }
 
 export function getFirestore() {
-  return getAdmin().firestore();
+  getAdmin();
+  return getFirestoreAdmin();
 }
 
 export function json(res, status, body) {
