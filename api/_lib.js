@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore as getFirestoreAdmin } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const appUrl = (
   process.env.APP_URL || "https://te-debo-web.vercel.app"
@@ -181,7 +182,7 @@ export async function refreshMercadoPagoToken(connection) {
       mpAccessToken: data.access_token,
       mpRefreshToken: data.refresh_token || connection.mpRefreshToken,
       mpUserId: String(data.user_id || connection.mpUserId || ""),
-      updatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },
   );
