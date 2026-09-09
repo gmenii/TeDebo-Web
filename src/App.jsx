@@ -241,20 +241,53 @@ function AccountPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
     const paymentId = params.get("payment_id") || params.get("collection_id");
-    if (!paymentId || !participantId || !slug) return;
-    fetch("/api/verify-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentId, slug, participantId }),
-    })
-      .then((response) => response.json())
-      .then((result) => {
-        if (result.paid) setPaid(true);
-        else if (result.error)
-          setError("No pudimos confirmar el pago todavía.");
+
+    const returnedParticipantId = params.get("participantId");
+
+    const paymentStatus = params.get("payment");
+
+    const currentParticipantId = returnedParticipantId || participantId;
+
+    if (!slug || !currentParticipantId) return;
+
+    if (paymentId) {
+      fetch("/api/verify-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentId,
+          slug,
+          participantId: currentParticipantId,
+        }),
       })
-      .catch(() => setError("No pudimos confirmar el pago todavía."));
+        .then((response) => response.json())
+        .then((result) => {
+          if (result.paid) {
+            setPaid(true);
+            return;
+          }
+
+          if (result.error) {
+            setError("No pudimos confirmar el pago todavía.");
+          }
+        })
+        .catch(() => {
+          setError("No pudimos confirmar el pago todavía.");
+        });
+
+      return;
+    }
+    if (paymentStatus === "approved") {
+      const timer = setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
   }, [participantId, slug]);
 
   const joinAccount = async (name) => {

@@ -7,12 +7,19 @@ import {
 } from "./_lib.js";
 
 function selectedAmount(account, participant) {
-  if (account.mode !== "items") return Number(participant.amountCents || 0);
+  if (account.mode !== "items") {
+    return Number(participant.amountCents || 0);
+  }
+
   return (account.items || []).reduce((total, item) => {
     const quantity = Number(participant.selections?.[item.id] || 0);
     const units = Math.max(1, Number(item.quantity || 1));
     const itemTotal = Number(item.totalCents || 0);
+
+    if (!quantity) return total;
+
     const unit = Math.floor(itemTotal / units);
+
     return total + quantity * unit + Math.min(quantity, itemTotal % units);
   }, 0);
 }
@@ -22,46 +29,84 @@ export default async function handler(req, res) {
 
   try {
     const { slug, participantId } = req.body || {};
+
     if (!slug || !participantId) {
-      return json(res, 400, { error: "missing_payment_data" });
+      return json(res, 400, {
+        error: "missing_payment_data",
+      });
     }
 
     const firestore = getFirestore();
-    const accountRef = firestore.collection("shared_accounts").doc(String(slug));
+
+    const accountRef = firestore
+      .collection("shared_accounts")
+      .doc(String(slug));
+
     const accountSnapshot = await accountRef.get();
-    const account = accountSnapshot.data();
-    if (!accountSnapshot.exists || !account) {
-      return json(res, 404, { error: "account_not_found" });
+
+    if (!accountSnapshot.exists) {
+      return json(res, 404, {
+        error: "account_not_found",
+      });
     }
+
+    const account = accountSnapshot.data();
 
     const participant = (account.participants || []).find(
       (entry) => entry.id === participantId,
     );
+
     if (!participant || participant.isCreator) {
-      return json(res, 400, { error: "participant_not_payable" });
+      return json(res, 400, {
+        error: "participant_not_payable",
+      });
     }
+
     if (participant.status === "paid") {
-      return json(res, 409, { error: "already_paid" });
+      return json(res, 409, {
+        error: "already_paid",
+      });
     }
 
     const amountCents = selectedAmount(account, participant);
+
     if (!Number.isInteger(amountCents) || amountCents <= 0) {
-      return json(res, 400, { error: "invalid_amount" });
+      return json(res, 400, {
+        error: "invalid_amount",
+      });
     }
 
     const connectionRef = firestore
       .collection("payment_connections")
       .doc(String(account.creatorUid));
+
     const connectionSnapshot = await connectionRef.get();
+
+    if (!connectionSnapshot.exists) {
+      return json(res, 409, {
+        error: "creator_not_connected",
+      });
+    }
+
     const connection = {
       ref: connectionRef,
-      ...(connectionSnapshot.data() || {}),
+      ...connectionSnapshot.data(),
     };
+
     if (!connection.mpRefreshToken) {
-      return json(res, 409, { error: "creator_not_connected" });
+      return json(res, 409, {
+        error: "creator_not_connected",
+      });
     }
 
     const accessToken = await refreshMercadoPagoToken(connection);
+
+    const externalReference = JSON.stringify({
+      slug: String(slug),
+      participantId: String(participantId),
+      creatorUid: String(account.creatorUid),
+    });
+
     const preferenceResponse = await fetch(
       "https://api.mercadopago.com/checkout/preferences",
       {
@@ -81,30 +126,51 @@ export default async function handler(req, res) {
               unit_price: amountCents / 100,
             },
           ],
-          external_reference: JSON.stringify({ slug, participantId }),
+
+          external_reference: externalReference,
+
           back_urls: {
-            success: `${appUrl}/c/${encodeURIComponent(slug)}?payment=approved`,
-            pending: `${appUrl}/c/${encodeURIComponent(slug)}?payment=pending`,
-            failure: `${appUrl}/c/${encodeURIComponent(slug)}?payment=failure`,
+            success:
+              `${appUrl}/c/${encodeURIComponent(slug)}` +
+              `?payment=approved&participantId=${encodeURIComponent(participantId)}`,
+
+            pending:
+              `${appUrl}/c/${encodeURIComponent(slug)}` +
+              `?payment=pending&participantId=${encodeURIComponent(participantId)}`,
+
+            failure:
+              `${appUrl}/c/${encodeURIComponent(slug)}` +
+              `?payment=failure&participantId=${encodeURIComponent(participantId)}`,
           },
+
           auto_return: "approved",
+
           notification_url: `${appUrl}/api/mercadopago-webhook`,
         }),
       },
     );
+
     const preference = await preferenceResponse.json();
+
     if (!preferenceResponse.ok || !preference.init_point) {
-      return json(res, 502, { error: "mercadopago_preference_failed" });
+      console.error("Mercado Pago preference error:", preference);
+
+      return json(res, 502, {
+        error: "mercadopago_preference_failed",
+      });
     }
 
-    await firestore.collection("pending_payments").doc(String(preference.id)).set({
-      slug,
-      participantId,
-      creatorUid: account.creatorUid,
-      amountCents,
-      preferenceId: preference.id,
-      createdAt: new Date(),
-    });
+    await firestore
+      .collection("pending_payments")
+      .doc(String(preference.id))
+      .set({
+        slug: String(slug),
+        participantId: String(participantId),
+        creatorUid: String(account.creatorUid),
+        amountCents,
+        preferenceId: String(preference.id),
+        createdAt: new Date(),
+      });
 
     return json(res, 200, {
       checkoutUrl: preference.init_point,
@@ -112,6 +178,8 @@ export default async function handler(req, res) {
       amountCents,
     });
   } catch (error) {
+    console.error("Create payment error:", error);
+
     return json(res, 500, {
       error: error.message || "payment_creation_failed",
     });
