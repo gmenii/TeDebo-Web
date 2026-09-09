@@ -63,11 +63,53 @@ function serviceAccountFromEnvironment() {
 }
 
 export function getAdmin() {
+  console.log("=== FIREBASE DEBUG ===");
+
+  console.log("PROJECT_ID exists:", Boolean(process.env.FIREBASE_PROJECT_ID));
+
+  console.log(
+    "CLIENT_EMAIL exists:",
+    Boolean(process.env.FIREBASE_CLIENT_EMAIL),
+  );
+
+  console.log("PRIVATE_KEY exists:", Boolean(process.env.FIREBASE_PRIVATE_KEY));
+
+  console.log(
+    "SERVICE_ACCOUNT_JSON exists:",
+    Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON),
+  );
+
+  console.log(
+    "SERVICE_ACCOUNT_BASE64 exists:",
+    Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64),
+  );
+
   if (!admin.apps.length) {
+    const credentials = serviceAccountFromEnvironment();
+
+    console.log("Firebase credential object:", {
+      project_id: Boolean(credentials?.project_id),
+      client_email: Boolean(credentials?.client_email),
+      private_key: Boolean(credentials?.private_key),
+    });
+
+    if (!credentials?.project_id) {
+      throw new Error("firebase_missing_project_id");
+    }
+
+    if (!credentials?.client_email) {
+      throw new Error("firebase_missing_client_email");
+    }
+
+    if (!credentials?.private_key) {
+      throw new Error("firebase_missing_private_key");
+    }
+
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccountFromEnvironment()),
+      credential: admin.credential.cert(credentials),
     });
   }
+
   return admin;
 }
 
