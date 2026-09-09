@@ -86,20 +86,38 @@ export function signState(payload) {
 }
 
 export function readState(value) {
-  const [encoded, signature] = String(value || "").split(".");
+  const parts = String(value || "").split(".");
+
+  if (parts.length !== 2) {
+    throw new Error("invalid_oauth_state");
+  }
+
+  const [encoded, signature] = parts;
+
+  if (!encoded || !signature) {
+    throw new Error("invalid_oauth_state");
+  }
+
   const expected = crypto
     .createHmac("sha256", process.env.MP_OAUTH_STATE_SECRET)
     .update(encoded)
     .digest("base64url");
+
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+
   if (
-    !encoded ||
-    !signature ||
-    signature.length !== expected.length ||
-    !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    signatureBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
   ) {
     throw new Error("invalid_oauth_state");
   }
-  return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+
+  try {
+    return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+  } catch {
+    throw new Error("invalid_oauth_state_payload");
+  }
 }
 
 export async function refreshMercadoPagoToken(connection) {
@@ -118,12 +136,14 @@ export async function refreshMercadoPagoToken(connection) {
     throw new Error("mercadopago_refresh_failed");
   await connection.ref.set(
     {
+      mpAccessToken: data.access_token,
       mpRefreshToken: data.refresh_token || connection.mpRefreshToken,
       mpUserId: String(data.user_id || connection.mpUserId || ""),
       updatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
     },
     { merge: true },
   );
+
   return data.access_token;
 }
 

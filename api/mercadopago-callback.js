@@ -10,44 +10,102 @@ import {
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, "GET")) return;
+
   try {
+    if (req.query.error) {
+      console.error(
+        "Mercado Pago OAuth cancelled:",
+        req.query.error,
+        req.query.error_description,
+      );
+
+      return redirect(res, `${appUrl}/?mercadopago=cancelled`);
+    }
+
+    if (!req.query.code) {
+      throw new Error("mercadopago_missing_code");
+    }
+
+    if (!req.query.state) {
+      throw new Error("mercadopago_missing_state");
+    }
+
     const state = readState(req.query.state);
-    if (!state.exp || state.exp < Date.now())
+
+    if (!state.uid) {
+      throw new Error("oauth_state_missing_uid");
+    }
+
+    if (!state.exp || state.exp < Date.now()) {
       throw new Error("oauth_state_expired");
-    if (req.query.error)
-      return redirect(res, `${state.returnUrl}&mercadopago=cancelled`);
+    }
+
+    const redirectUri = `${appUrl}/api/mercadopago-callback`;
 
     const tokenResponse = await fetch(
       "https://api.mercadopago.com/oauth/token",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           grant_type: "authorization_code",
           client_id: process.env.MP_CLIENT_ID,
           client_secret: process.env.MP_CLIENT_SECRET,
           code: req.query.code,
-          redirect_uri: `${appUrl}/api/mercadopago-callback`,
+          redirect_uri: redirectUri,
         }),
       },
     );
+
     const token = await tokenResponse.json();
-    if (!tokenResponse.ok || !token.access_token || !token.refresh_token) {
+
+    if (!tokenResponse.ok) {
+      console.error("Mercado Pago token exchange failed:", token);
+
       throw new Error("mercadopago_token_exchange_failed");
     }
 
-      await getFirestore()
+    if (!token.access_token) {
+      throw new Error("mercadopago_missing_access_token");
+    }
+
+    if (!token.refresh_token) {
+      throw new Error("mercadopago_missing_refresh_token");
+    }
+
+    const db = getFirestore();
+    const FieldValue = getAdmin().firestore.FieldValue;
+
+    await db
       .collection("payment_connections")
       .doc(state.uid)
-      .set({
-        mpRefreshToken: token.refresh_token,
-        mpUserId: String(token.user_id || ""),
-        provider: "mercadopago",
-        connectedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
-        updatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
-      });
-    return redirect(res, `${state.returnUrl}&mercadopago=connected`);
+      .set(
+        {
+          provider: "mercadopago",
+
+          mpUserId: String(token.user_id || ""),
+
+          mpAccessToken: token.access_token,
+
+          mpRefreshToken: token.refresh_token,
+
+          mpTokenExpiresIn: Number(token.expires_in || 0),
+
+          connectedAt: FieldValue.serverTimestamp(),
+
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+    return redirect(res, `${appUrl}/?mercadopago=connected`);
   } catch (error) {
-    return json(res, 400, { error: error.message || "oauth_callback_failed" });
+    console.error("Mercado Pago OAuth callback error:", error);
+
+    return json(res, 400, {
+      error: error.message || "oauth_callback_failed",
+    });
   }
 }
